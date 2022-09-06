@@ -6,7 +6,7 @@ import styles from 'components/titlebar/scss/TitlebarButtons.module.scss';
  * @description Titlebar minimize button.
  * @memberof Titlebar
  */
-export const MinimizeButton = (props) => (
+export const MinimizeButton = (props: any) => (
   <button
     { ...props }
     aria-label="Minimize"
@@ -22,7 +22,7 @@ export const MinimizeButton = (props) => (
  * @description Titlebar maximize button.
  * @memberof Titlebar
  */
-export const MaximizeButton = (props) => (
+export const MaximizeButton = (props: any) => (
   <button
     { ...props }
     aria-label="Maximize"
@@ -38,7 +38,7 @@ export const MaximizeButton = (props) => (
  * @description Titlebar contract (unmaximize) button.
  * @memberof Titlebar
  */
-export const ContractButton = (props) => (
+export const ContractButton = (props: any) => (
   <button
     { ...props }
     aria-label="Contract"
@@ -55,7 +55,7 @@ export const ContractButton = (props) => (
  * @description Titlebar close button.
  * @memberof Titlebar
  */
-export const CloseButton = (props) => (
+export const CloseButton = (props: any) => (
   <button
     { ...props }
     aria-label="Close"

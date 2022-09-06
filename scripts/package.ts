@@ -1,10 +1,10 @@
-const { spawnSync } = require('child_process');
-const { Builder } = require('./build');
+import { spawnSync } from 'child_process'
+import { Builder } from './build'
 
 const builder = new Builder();
 
 // Define input and output directories
-const path = (directory) => {
+const path = (directory: string) => {
   return require('path').resolve(__dirname, directory);
 };
 
@@ -12,7 +12,7 @@ const path = (directory) => {
  * @namespace Packager
  * @description - Packages app for various operating systems.
  */
-class Packager {
+export class Packager {
 
   /**
    * @description - Creates DEB installer for linux.
@@ -25,7 +25,7 @@ class Packager {
     // Build Python & React distribution files
     builder.buildAll();
 
-    const options = {
+    const options: any = {
       build: [
         'app',
         '--extra-resource=./resources',
@@ -67,7 +67,7 @@ class Packager {
     // Build Python & React distribution files
     builder.buildAll();
 
-    const options = {
+    const options: any = {
       build: [
         'app',
         '--extra-resource=./resources',
@@ -110,7 +110,7 @@ class Packager {
     // Build Python & React distribution files
     builder.buildAll();
 
-    const options = {
+    const options: any = {
       app: [
         'app',
         '--asar',
@@ -158,5 +158,3 @@ class Packager {
   };
 
 }
-
-module.exports.Packager = Packager;

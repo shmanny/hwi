@@ -4,6 +4,12 @@ const { ipcRenderer } = window.require('electron');
 // Dynamically generated TCP (open) port between 3000-3999
 const port = ipcRenderer.sendSync('get-port-number');
 
+type Routes = '/example' | '/quit'
+
+type Callback = ((value: any) => any) | null | undefined |  ((reason: any) => PromiseLike<never>) | null | undefined
+
+type ErrorCallback = (error: Error) => any
+
 /**
  * @namespace Requests
  * @description - Helper functions for network requests (e.g., get, post, put, delete, etc..)
@@ -16,7 +22,7 @@ const port = ipcRenderer.sendSync('get-port-number');
 * @return response data from Python/Flask service.
 * @memberof Requests
 */
-export const get = (route, callback, errorCallback) => {
+export const get = (route: Routes, callback: Callback, errorCallback: ErrorCallback) => {
   fetch(`http://localhost:${port}/${route}`)
     .then((response) => response.json())
     .then(callback)
@@ -33,10 +39,10 @@ export const get = (route, callback, errorCallback) => {
 * @memberof Requests
 */
 export const post = (
-  body,
-  route,
-  callback,
-  errorCallback
+  body: any,
+  route: Routes,
+  callback: Callback,
+  errorCallback: ErrorCallback
 ) => {
   fetch(`http://localhost:${port}/${route}`, {
     body,

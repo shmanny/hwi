@@ -1,12 +1,11 @@
-const [ , , script, command ] = process.argv;
-const { existsSync, readdirSync } = require('fs');
-const path = require('path');
+import { existsSync, readdirSync } from 'fs';
+import path from 'path';
+import { Builder } from './build';
+import { Cleaner } from './clean';
+import { Packager } from './package';
+import { Starter } from './start';
 
-const { Builder } = require('./build');
-const { Cleaner } = require('./clean');
-const { Packager } = require('./package');
-const { Starter } = require('./start');
-
+export const [ , , script, command ] = process.argv;
 
 /**
  * @namespace Dispatcher
@@ -17,19 +16,23 @@ const { Starter } = require('./start');
 
 switch (script) {
   case 'build':
-    return buildApp();
+    buildApp();
+    break;
 
   case 'clean':
-    return cleanProject();
+    cleanProject();
+    break;
 
   case 'package':
-    return packageApp();
+    packageApp();
+    break;
 
   case 'start':
-    return startDeveloperMode();
-
+    startDeveloperMode();
+    break;
   // no default
 }
+
 
 
 /**
@@ -60,7 +63,7 @@ function buildApp() {
  */
 function cleanProject() {
   const cleaner = new Cleaner();
-  const getPath = (...filePaths) => path.join(__dirname, '..', ...filePaths);
+  const getPath = (...filePaths: string[]) => path.join(__dirname, '..', ...filePaths);
 
   // Files to remove during cleaning
   [

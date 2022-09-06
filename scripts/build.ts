@@ -1,11 +1,11 @@
-const { spawnSync } = require('child_process');
-const spawnOptions = { detached: false, shell: true, stdio: 'inherit' };
+import { spawnSync, SpawnOptions } from 'child_process';
+const spawnOptions: SpawnOptions = { detached: false, shell: true, stdio: 'inherit' };
 
 /**
  * @namespace Builder
  * @description - Builds React & Python builds of project so Electron can be used.
  */
-class Builder {
+export class Builder {
 
   /**
    * @description - Creates React and Python production builds.
@@ -48,5 +48,3 @@ class Builder {
     spawnSync(`react-scripts build`, spawnOptions);
   }
 }
-
-module.exports.Builder = Builder;

@@ -1,22 +1,22 @@
 // Built-in modules
-const { spawn } = require('child_process');
-const path = require('path');
+import { spawn } from 'child_process';
+import path from 'path';
 
 // Electron modules
-const { app, BrowserWindow, ipcMain } = require('electron');
+import { app, BrowserWindow, ipcMain } from 'electron';
 
 // Extra modules
-const getPort = require('get-port');
-const isDevMode = require('electron-is-dev');
-const { get } = require('axios');
+import getPort from 'get-port';
+import isDevMode from'electron-is-dev';
+import axios from 'axios'
 
 
 /**
  * @description - Shuts down Electron & Flask.
  * @param {number} port - Port that Flask server is running on.
  */
-const shutdown = (port) => {
-  get(`http://localhost:${port}/quit`)
+const shutdown = (port: number) => {
+  axios.get(`http://localhost:${port}/quit`)
     .then(app.quit)
     .catch(app.quit);
 };
@@ -27,7 +27,7 @@ const shutdown = (port) => {
  * @description - Electron browser windows.
  * @tutorial - https://www.electronjs.org/docs/api/browser-window
  */
-const browserWindows = {};
+const browserWindows: {loadingWindow?: BrowserWindow, mainWindow?: BrowserWindow} = {};
 
 
 /**
@@ -36,8 +36,9 @@ const browserWindows = {};
  *
  * @memberof BrowserWindow
  */
-const createMainWindow = (port) => {
+const createMainWindow = (port: number) => {
   const { loadingWindow, mainWindow } = browserWindows;
+  if (!loadingWindow || !mainWindow) throw new Error('Browser windows not set')
 
   /**
    * @description - Function to use custom JavaSCript in the DOM.
@@ -45,10 +46,11 @@ const createMainWindow = (port) => {
    * @param {function} callback - Callback to execute here once complete.
    * @returns {Promise}
    */
-  const executeOnWindow = (command, callback) => {
-    return mainWindow.webContents.executeJavaScript(command)
-      .then(callback)
-      .catch(console.error);
+  const executeOnWindow = (command: string, callback?: any) => {
+    if (mainWindow)
+      mainWindow.webContents.executeJavaScript(command)
+        .then(callback)
+        .catch(console.error);
   };
 
   /**
@@ -83,8 +85,8 @@ const createMainWindow = (port) => {
        * @description Updates windows if page is loaded
        * @param {*} isLoaded
        */
-      const handleLoad = (isLoaded) => {
-        if (isLoaded) {
+      const handleLoad = (isLoaded: boolean) => {
+        if (isLoaded && loadingWindow) {
 
           /**
            * Keep show() & hide() in this order to prevent
@@ -114,7 +116,7 @@ const createMainWindow = (port) => {
    * @description - Controls the opacity of title bar on focus/blur.
    * @param {number} value - Opacity to set for title bar.
    */
-  const setTitleOpacity = (value) => `
+  const setTitleOpacity = (value: number) => `
     if(document.readyState === 'complete') {
       const titleBar = document.getElementById('electron-window-title-text');
       const titleButtons = document.getElementById('electron-window-title-buttons');
@@ -147,9 +149,9 @@ const createMainWindow = (port) => {
  * @memberof BrowserWindow
  */
 const createLoadingWindow = () => {
-  return new Promise((resolve, reject) => {
+  return new Promise<void>((resolve, reject) => {
     const { loadingWindow } = browserWindows;
-
+    if (!loadingWindow) throw new Error('Loading window not set')
     // Variants of developer loading screen
     const loaderConfig = {
       react: 'utilities/loaders/react/index.html',
@@ -186,6 +188,24 @@ const installExtensions = async () => {
     .allSettled(extensions)
     .catch(console.error);
 };
+
+/**
+ * Returns script to run flask server 
+ * @returns string script to start flask service 
+ */
+const getRunFlaskScript = (): string => {
+  const platform = process.platform
+  switch (platform) {
+    case 'darwin':
+      return `open -gj "${path.join(app.getAppPath(), 'resources', 'app.app')}" --args`
+    case 'linux':
+      return './resources/app/app'
+    case 'win32':
+      return 'start ./resources/app/app.exe'
+    default:
+      throw Error('Platform not supported')
+  }
+}
 
 
 /**
@@ -236,11 +256,7 @@ app.whenReady().then(async () => {
     createMainWindow(port);
 
     // Dynamic script assignment for starting Flask in production
-    const runFlask = {
-      darwin: `open -gj "${path.join(app.getAppPath(), 'resources', 'app.app')}" --args`,
-      linux: './resources/app/app',
-      win32: 'start ./resources/app/app.exe'
-    }[process.platform];
+    const runFlask = getRunFlaskScript()
 
     spawn(`${runFlask} ${port}`, { detached: false, shell: true, stdio: 'pipe' });
   }
