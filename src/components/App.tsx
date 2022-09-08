@@ -1,11 +1,11 @@
 import React, { Fragment, useEffect } from 'react';
-import { get } from 'utils/requests';
+import { get } from '../utils/requests';
 
-import { Counter } from 'components/counter/Counter';
-import Titlebar from 'components/titlebar/Titlebar';
+import { Counter } from './counter/Counter';
+import Titlebar from './titlebar/Titlebar';
 
-import logo from 'logo.svg';
-import styles from 'components/App.module.scss';
+import logo from '../logo.svg';
+import styles from './App.module.scss';
 
 function App() {
 
@@ -17,7 +17,7 @@ function App() {
      * @see /app.py
      */
     setTimeout(() => get(
-      'example', // Route
+      '/example', // Route
       (response) => alert(response), // Response callback
       (error) => console.error(error) // Error callback
     ), 3000);

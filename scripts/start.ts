@@ -34,8 +34,8 @@ export class Starter {
     spawnSync('npx kill-port 3000', spawnOptions.hideLogs);
 
     // Start & identify React & Electron processes
-    spawn('cross-env BROWSER=none npx tsx start', spawnOptions.showLogs);
-    spawn('electron .', spawnOptions.showLogs);
+    spawn('cross-env BROWSER=none react-scripts start', spawnOptions.showLogs);
+    spawn('tsx electron .', spawnOptions.showLogs);
 
     // Kill processes on exit
     const exitOnEvent = (event: string) => {

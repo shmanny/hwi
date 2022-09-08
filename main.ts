@@ -9,288 +9,276 @@ import { app, BrowserWindow, ipcMain } from 'electron';
 import getPort from 'get-port';
 import isDevMode from'electron-is-dev';
 import axios from 'axios'
+import installer from 'electron-devtools-installer'
 
 
-/**
- * @description - Shuts down Electron & Flask.
- * @param {number} port - Port that Flask server is running on.
- */
-const shutdown = (port: number) => {
-  axios.get(`http://localhost:${port}/quit`)
-    .then(app.quit)
-    .catch(app.quit);
-};
+export default class Main {
+  static mainWindow: BrowserWindow | null
+  static loadingWindow: BrowserWindow
+  static application: Electron.App
+  static BrowserWindow: BrowserWindow;
+  static port: number
+  
+  private static onWindowAllClose() {
+    if (process.platform !== 'darwin') {
+      Main.shutdown()
+    }
+  }
 
-
-/**
- * @namespace BrowserWindow
- * @description - Electron browser windows.
- * @tutorial - https://www.electronjs.org/docs/api/browser-window
- */
-const browserWindows: {loadingWindow?: BrowserWindow, mainWindow?: BrowserWindow} = {};
-
-
-/**
- * @description - Creates main window.
- * @param {number} port - Port that Flask server is running on.
- *
- * @memberof BrowserWindow
- */
-const createMainWindow = (port: number) => {
-  const { loadingWindow, mainWindow } = browserWindows;
-  if (!loadingWindow || !mainWindow) throw new Error('Browser windows not set')
+  private static shutdown() {
+    axios.get(`http://localhost:${Main.port}/quit`)
+      .then(Main.application.quit)
+      .catch(Main.application.quit);
+  }
 
   /**
-   * @description - Function to use custom JavaSCript in the DOM.
-   * @param {string} command - JavaScript to execute in DOM.
-   * @param {function} callback - Callback to execute here once complete.
-   * @returns {Promise}
+    * Method to set port in range of 3001-3999,
+    * based on availability.
+  */
+  private static async createPort() {
+    return getPort({
+      port: getPort.makeRange(3001, 3999)
+    })
+  }
+
+  private static async onReady() {
+    
+    const port = await getPort({
+      port: getPort.makeRange(3001, 3999)
+    });
+
+    /**
+     * Assigns the main browser window on the
+     * browserWindows object.
+     */
+    Main.mainWindow = new Main.BrowserWindow({
+      frame: false,
+      webPreferences: {
+        contextIsolation: false,
+        enableRemoteModule: true,
+        nodeIntegration: true,
+        preload: path.join(app.getAppPath(), 'preload.js')
+      }
+    })
+
+    /**
+     * If not using in production, use the loading window
+     * and run Flask in shell.
+     */
+    if (isDevMode) {
+      await Main.installExtensions(); // React, Redux devTools
+      Main.loadingWindow = new BrowserWindow({ frame: false });
+      Main.createLoadingWindow().then(() => Main.createMainWindow());
+      spawn(`python app.py ${port}`, { detached: true, shell: true, stdio: 'inherit' });
+    }
+
+    /**
+     * If using in production, use the main window and run bundled
+     * app (dmg, elf, or exe) file
+     */
+
+    else {
+      Main.createMainWindow()
+
+      // Dynamic script assignment for starting Flask in production
+      const runFlask = Main.getRunFlaskScript()
+      
+      spawn(`${runFlask} ${port}`, { detached: false, shell: true, stdio: 'pipe' });
+    }
+
+  }
+
+  private static onClose() {
+    Main.mainWindow = null;
+  }
+
+  private static onActivate() {
+    /**
+     * On macOS, it's common to re-create a window in the app when the
+     * dock icon is clicked and there are no other windows open.
+     */
+
+    if (BrowserWindow.getAllWindows().length === 0) Main.createMainWindow()
+  }
+
+  /**
+   * @description - Creates main window
+   * @param {number} port - Port that Flask server is running on 
    */
-  const executeOnWindow = (command: string, callback?: any) => {
-    if (mainWindow)
-      mainWindow.webContents.executeJavaScript(command)
-        .then(callback)
-        .catch(console.error);
+  private static createMainWindow() {
+    if (!Main.mainWindow) throw new Error('Main window not currently set')
+    const port = Main.port;
+    /**
+     * @description - Function to use custom Javascript in the DOM.
+     * @param {string} command - Javascript to execute in DOM.
+     * @param {function} callback - Callback to execture here once complete.
+     * @returns {Promise}
+     */
+    const executeOnWindow = (command: string, callback?: any) => {
+      if (Main.mainWindow) {
+        Main.mainWindow.webContents.executeJavaScript(command)
+          .then(callback)
+          .catch(console.error)
+      }
+    }
+
+    /**
+     * If in developer mode, then show a loading window while
+     * the app and developer server compile. 
+     */
+    if (isDevMode) {
+      Main.mainWindow.loadURL('http://localhost:3000');
+      Main.mainWindow.hide();
+
+      /**
+       * Hide loading window and show main window 
+       * once the main window is ready
+       */
+      Main.mainWindow.webContents.on('did-finish-load', () => {
+        Main.mainWindow?.webContents.openDevTools({ mode: 'undocked' })
+
+        /**
+         * Checks page for errors that may of occured during 
+         * hot load process
+         */
+        const isPageLoaded = `
+          var isBodyFull = document.body.innerHTML !== "";
+          var isHeadFull = document.head.innerHTML !== "";
+          var isLoadSuccess = isBodyFull && isHeadFull;
+
+          isLoadSuccess || Boolean(location.reload());
+        `;
+
+        /**
+         * @description Updates windows if page is loaded
+         * @param {*} isLoaded
+         */
+        const handleLoad = (isLoaded: boolean) => {
+          if (isLoaded && Main.loadingWindow) {
+            /**
+             * Keep show() & hide() in this order to prevent
+             * unresponsive behavior during page load
+             */
+            Main.mainWindow?.show();
+            Main.loadingWindow.hide();
+          }
+        }
+
+        /**
+         * Checks if the page has been populated with React 
+         * project and, if so, shows the main page.
+         */
+        executeOnWindow(isPageLoaded, handleLoad);
+      })
+    }
+
+    /**
+     * If using in production, the built version of the React 
+     * project will be used instead of local host
+     */
+    else {
+      Main.mainWindow.loadFile(path.join(__dirname, 'build/index.html'))
+    }
+
+    /**
+    * @description - Controls the opacity of title bar on focus/blur.
+    * @param {number} value - Opacity to set for title bar.
+    */
+    const setTitleOpacity = (value: number) => `
+      if(document.readyState === 'complete') {
+        const titleBar = document.getElementById('electron-window-title-text');
+        const titleButtons = document.getElementById('electron-window-title-buttons');
+
+        if(titleBar) titleBar.style.opacity = ${value};
+        if(titleButtons) titleButtons.style.opacity = ${value};
+      }
+    `;
+
+    Main.mainWindow.on('focus', () => executeOnWindow(setTitleOpacity(1)));
+    Main.mainWindow.on('blur', () => executeOnWindow(setTitleOpacity(0.5)));
+
+    /**
+     * Listen and respond to ipcRenderer events on the frontend
+     * @see `src\utils\services.js`
+     */
+     ipcMain.on('app-maximize', (_event, _arg) => Main.mainWindow?.maximize());
+     ipcMain.on('app-minimize', (_event, _arg) => Main.mainWindow?.minimize());
+     ipcMain.on('app-quit', (_event, _arg) => Main.shutdown());
+     ipcMain.on('app-unmaximize', (_event, _arg) => Main.mainWindow?.unmaximize());
+     ipcMain.on('get-port-number', (event, _arg) => {
+       event.returnValue = port;
+     });
   };
 
   /**
-   * If in developer mode, show a loading window while
-   * the app and developer server compile.
+   * @description - Creates a loading window to show while build is created
+   * @memberof BrowserWindow
+   * @returns void
    */
-  if (isDevMode) {
-
-    mainWindow.loadURL('http://localhost:3000');
-    mainWindow.hide();
-
-    /**
-     * Hide loading window and show main window
-     * once the main window is ready.
-     */
-    mainWindow.webContents.on('did-finish-load', () => {
-      mainWindow.webContents.openDevTools({ mode: 'undocked' });
-
-      /**
-       * Checks page for errors that may have occurred
-       * during the hot-loading process.
-       */
-      const isPageLoaded = `
-        var isBodyFull = document.body.innerHTML !== "";
-        var isHeadFull = document.head.innerHTML !== "";
-        var isLoadSuccess = isBodyFull && isHeadFull;
-
-        isLoadSuccess || Boolean(location.reload());
-      `;
-
-      /**
-       * @description Updates windows if page is loaded
-       * @param {*} isLoaded
-       */
-      const handleLoad = (isLoaded: boolean) => {
-        if (isLoaded && loadingWindow) {
-
-          /**
-           * Keep show() & hide() in this order to prevent
-           * unresponsive behavior during page load.
-           */
-          mainWindow.show();
-          loadingWindow.hide();
-        }
+  private static createLoadingWindow() {
+    return new Promise<void>((resolve, reject) => {
+      // Variants of developer loading screen
+      const loaderConfig = {
+        react: 'utilities/loaders/react/index.html',
+        redux: 'utilities/loaders/redux/index.html'
       };
 
-      /**
-       * Checks if the page has been populated with
-       * React project. if so, shows the main page.
-       */
-      executeOnWindow(isPageLoaded, handleLoad);
-    });
+      try {
+        Main.loadingWindow.loadFile(path.join(__dirname, loaderConfig.redux));
+
+        Main.loadingWindow.webContents.on('did-finish-load', () => {
+          Main.loadingWindow.show();
+          resolve();
+        });
+
+      } catch (error) {
+        console.error(error);
+        reject();
+      }
+    })
+  }
+  
+  /**
+   * @description - Installs developer extensions.
+   * @returns {Promise}
+   */
+  private static installExtensions() {
+    const isForceDownload = Boolean(process.env.UPGRADE_EXTENSIONS)
+
+    const extensions = ['REACT_DEVELOPER_TOOLS', 'REDUX_DEVTOOLS']
+      .map((extension) => installer(installer[extension], isForceDownload))
+
+    return Promise
+      .allSettled(extensions)
+      .catch(console.error)
   }
 
   /**
-   * If using in production, the built version of the
-   * React project will be used instead of localhost.
+   * Returns script to run background flask service
+   * @returns script to start flask service
    */
-  else mainWindow.loadFile(path.join(__dirname, 'build/index.html'));
-
-
-  /**
-   * @description - Controls the opacity of title bar on focus/blur.
-   * @param {number} value - Opacity to set for title bar.
-   */
-  const setTitleOpacity = (value: number) => `
-    if(document.readyState === 'complete') {
-      const titleBar = document.getElementById('electron-window-title-text');
-      const titleButtons = document.getElementById('electron-window-title-buttons');
-
-      if(titleBar) titleBar.style.opacity = ${value};
-      if(titleButtons) titleButtons.style.opacity = ${value};
+  private static getRunFlaskScript(): string {
+    const platform = process.platform
+    switch (platform) {
+      case 'darwin':
+        return `open -gj "${path.join(app.getAppPath(), 'resources', 'app.app')}" --args`
+      case 'linux':
+        return './resources/app/app'
+      case 'win32':
+        return 'start ./resources/app/app.exe'
+      default:
+        throw Error('Platform not supported')
     }
-  `;
+  }
 
-
-  mainWindow.on('focus', () => executeOnWindow(setTitleOpacity(1)));
-  mainWindow.on('blur', () => executeOnWindow(setTitleOpacity(0.5)));
-
-  /**
-   * Listen and respond to ipcRenderer events on the frontend.
-   * @see `src\utils\services.js`
-   */
-  ipcMain.on('app-maximize', (_event, _arg) => mainWindow.maximize());
-  ipcMain.on('app-minimize', (_event, _arg) => mainWindow.minimize());
-  ipcMain.on('app-quit', (_event, _arg) => shutdown(port));
-  ipcMain.on('app-unmaximize', (_event, _arg) => mainWindow.unmaximize());
-  ipcMain.on('get-port-number', (event, _arg) => {
-    event.returnValue = port;
-  });
-};
-
-
-/**
- * @description - Creates loading window to show while build is created.
- * @memberof BrowserWindow
- */
-const createLoadingWindow = () => {
-  return new Promise<void>((resolve, reject) => {
-    const { loadingWindow } = browserWindows;
-    if (!loadingWindow) throw new Error('Loading window not set')
-    // Variants of developer loading screen
-    const loaderConfig = {
-      react: 'utilities/loaders/react/index.html',
-      redux: 'utilities/loaders/redux/index.html'
-    };
-
-    try {
-      loadingWindow.loadFile(path.join(__dirname, loaderConfig.redux));
-
-      loadingWindow.webContents.on('did-finish-load', () => {
-        loadingWindow.show();
-        resolve();
-      });
-    } catch (error) {
-      console.error(error);
-      reject();
-    }
-  });
-};
-
-
-/**
- * @description - Installs developer extensions.
- * @returns {Promise}
- */
-const installExtensions = async () => {
-  const isForceDownload = Boolean(process.env.UPGRADE_EXTENSIONS);
-  const installer = require('electron-devtools-installer');
-
-  const extensions = ['REACT_DEVELOPER_TOOLS', 'REDUX_DEVTOOLS']
-    .map((extension) => installer.default(installer[extension], isForceDownload));
-
-  return Promise
-    .allSettled(extensions)
-    .catch(console.error);
-};
-
-/**
- * Returns script to run flask server 
- * @returns string script to start flask service 
- */
-const getRunFlaskScript = (): string => {
-  const platform = process.platform
-  switch (platform) {
-    case 'darwin':
-      return `open -gj "${path.join(app.getAppPath(), 'resources', 'app.app')}" --args`
-    case 'linux':
-      return './resources/app/app'
-    case 'win32':
-      return 'start ./resources/app/app.exe'
-    default:
-      throw Error('Platform not supported')
+  static async main(app: Electron.App, browserWindow: typeof BrowserWindow) {
+    Main.port = await Main.createPort()
+    Main.BrowserWindow = browserWindow
+    Main.application = app
+    Main.application.on('window-all-closed', Main.onWindowAllClose)
+    Main.application.whenReady().then(Main.onReady)
+    Main.application.on('activate', Main.onActivate)
   }
 }
 
-
-/**
- * This method will be called when Electron has finished
- * initialization and is ready to create browser windows.
- * Some APIs can only be used after this event occurs.
-*/
-app.whenReady().then(async () => {
-
-  /**
-   * Method to set port in range of 3001-3999,
-   * based on availability.
-   */
-  const port = await getPort({
-    port: getPort.makeRange(3001, 3999)
-  });
-
-  /**
-   * Assigns the main browser window on the
-   * browserWindows object.
-   */
-  browserWindows.mainWindow = new BrowserWindow({
-    frame: false,
-    webPreferences: {
-      contextIsolation: false,
-      enableRemoteModule: true,
-      nodeIntegration: true,
-      preload: path.join(app.getAppPath(), 'preload.js')
-    }
-  });
-
-  /**
-   * If not using in production, use the loading window
-   * and run Flask in shell.
-   */
-  if (isDevMode) {
-    await installExtensions(); // React, Redux devTools
-    browserWindows.loadingWindow = new BrowserWindow({ frame: false });
-    createLoadingWindow().then(() => createMainWindow(port));
-    spawn(`python app.py ${port}`, { detached: true, shell: true, stdio: 'inherit' });
-  }
-
-  /**
-   * If using in production, use the main window
-   * and run bundled app (dmg, elf, or exe) file.
-   */
-  else {
-    createMainWindow(port);
-
-    // Dynamic script assignment for starting Flask in production
-    const runFlask = getRunFlaskScript()
-
-    spawn(`${runFlask} ${port}`, { detached: false, shell: true, stdio: 'pipe' });
-  }
-
-  app.on('activate', () => {
-    /**
-     * On macOS it's common to re-create a window in the app when the
-     * dock icon is clicked and there are no other windows open.
-    */
-    if (BrowserWindow.getAllWindows().length === 0) createMainWindow(port);
-  });
-
-  /**
-   * Ensures that only a single instance of the app
-   * can run, this correlates with the "name" property
-   * used in `package.json`.
-   */
-  const initialInstance = app.requestSingleInstanceLock();
-  if (!initialInstance) app.quit();
-  else {
-    app.on('second-instance', () => {
-      if (browserWindows.mainWindow?.isMinimized()) browserWindows.mainWindow?.restore();
-      browserWindows.mainWindow?.focus();
-    });
-  }
-
-  /**
-   * Quit when all windows are closed, except on macOS. There, it's common
-   * for applications and their menu bar to stay active until the user quits
-   * explicitly with Cmd + Q.
-  */
-  app.on('window-all-closed', () => {
-    if (process.platform !== 'darwin') {
-      shutdown(port);
-    }
-  });
-});
+Main.main(app, BrowserWindow)

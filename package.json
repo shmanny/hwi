@@ -1,7 +1,6 @@
 {
   "author": "Daniel Wade",
   "description": "Started template for Electron, React, Python app",
-  "type": "module",
   "dependencies": {
     "@reduxjs/toolkit": "^1.1.0",
     "@types/jest": "^29.0.0",
@@ -12,9 +11,9 @@
     "electron-is-dev": "^1.2.0",
     "get-port": "^5.1.1",
     "prop-types": "^15.7.2",
-    "react": "^16.13.1",
+    "react": "^18.2.0",
     "react-dom": "^16.13.1",
-    "react-redux": "^7.2.0",
+    "react-redux": "^8.0.2",
     "react-scripts": "3.4.1",
     "typescript": "^4.8.2"
   },
@@ -35,7 +34,8 @@
     "eslint-plugin-react": "^7.24.0",
     "eslint-plugin-standard": "^5.0.0",
     "jsdoc": "^3.6.5",
-    "sass": "^1.26.5"
+    "sass": "^1.26.5",
+    "tsx": "^3.9.0"
   },
   "optionalDependencies": {
     "electron-installer-debian": "^3.1.0"
@@ -59,23 +59,23 @@
   },
   "homepage": "./",
   "license": "MIT",
-  "main": "main.ts",
+  "main": "main.mts",
   "name": "electron-react-python-template",
   "private": true,
   "scripts": {
-    "build": "ts-node ./scripts/dispatch build all",
-    "build:all": "ts-node ./scripts/dispatch build all",
-    "build:react": "ts-node ./scripts/dispatch build react",
-    "build:python": "ts-node ./scripts/dispatch build python",
+    "build": "tsx ./scripts/dispatch build all",
+    "build:all": "tsx ./scripts/dispatch build all",
+    "build:react": "tsx ./scripts/dispatch build react",
+    "build:python": "tsx ./scripts/dispatch build python",
     "build:docs": "jsdoc -c jsdoc.json",
-    "build:package:linux": "ts-node ./scripts/dispatch package linux",
-    "build:package:mac": "ts-node ./scripts/dispatch package mac",
-    "build:package:windows": "ts-node ./scripts/dispatch package windows",
-    "clean": "ts-node ./scripts/dispatch clean",
+    "build:package:linux": "tsx ./scripts/dispatch package linux",
+    "build:package:mac": "tsx ./scripts/dispatch package mac",
+    "build:package:windows": "tsx ./scripts/dispatch package windows",
+    "clean": "tsx ./scripts/dispatch clean",
     "eject": "react-scripts eject",
-    "start": "ts-node ./scripts/dispatch start",
+    "start": "tsx ./scripts/dispatch.ts start",
     "start:electron": "electron .",
-    "start:react": "react-scripts start",
+    "start:react": "tsx start",
     "test": "react-scripts test"
   },
   "version": "1.0.0"

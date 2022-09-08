@@ -5,10 +5,10 @@ import {
   incrementAsync,
   incrementByAmount,
   selectCount
-} from 'components/counter/counterSlice';
+} from './counterSlice';
 import { useDispatch, useSelector } from 'react-redux';
 
-import styles from 'components/counter/Counter.module.scss';
+import styles from './Counter.module.scss';
 
 export function Counter() {
   const count = useSelector(selectCount);

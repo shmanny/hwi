@@ -1,6 +1,6 @@
 import React from 'react';
 
-import styles from 'components/titlebar/scss/TitlebarButtons.module.scss';
+import styles from './scss/TitlebarButtons.module.scss';
 
 /**
  * @description Titlebar minimize button.

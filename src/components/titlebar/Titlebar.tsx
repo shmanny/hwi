@@ -3,13 +3,13 @@ import {
   ContractButton,
   MaximizeButton,
   MinimizeButton
-} from 'components/titlebar/TitlebarButtons';
+} from './TitlebarButtons';
 import React, { useState } from 'react';
 
-import { app } from 'utils/services';
+import { app } from '../../utils/services';
 
-import favicon from 'components/titlebar/img/favicon.png';
-import styles from 'components/titlebar/scss/Titlebar.module.scss';
+import favicon from './img/favicon.png';
+import styles from './scss/Titlebar.module.scss';
 
 
 /**
