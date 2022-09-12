@@ -35,7 +35,7 @@ export class Starter {
 
     // Start & identify React & Electron processes
     spawn('cross-env BROWSER=none react-scripts start', spawnOptions.showLogs);
-    spawn('tsx electron .', spawnOptions.showLogs);
+    spawn('electron .', spawnOptions.showLogs);
 
     // Kill processes on exit
     const exitOnEvent = (event: string) => {

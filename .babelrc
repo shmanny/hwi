@@ -20,6 +20,7 @@
     "@babel/plugin-transform-shorthand-properties",
     "@babel/plugin-transform-spread",
     "@babel/plugin-transform-sticky-regex",
-    "@babel/plugin-transform-template-literals"
+    "@babel/plugin-transform-template-literals",
+    "@babel/preset-typescript"
   ]
 }

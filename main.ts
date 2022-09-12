@@ -9,7 +9,7 @@ import { app, BrowserWindow, ipcMain } from 'electron';
 import getPort from 'get-port';
 import isDevMode from'electron-is-dev';
 import axios from 'axios'
-import installer from 'electron-devtools-installer'
+import installer, { REACT_DEVELOPER_TOOLS, REDUX_DEVTOOLS } from 'electron-devtools-installer'
 
 
 export default class Main {
@@ -42,7 +42,6 @@ export default class Main {
   }
 
   private static async onReady() {
-    
     const port = await getPort({
       port: getPort.makeRange(3001, 3999)
     });
@@ -51,7 +50,7 @@ export default class Main {
      * Assigns the main browser window on the
      * browserWindows object.
      */
-    Main.mainWindow = new Main.BrowserWindow({
+    Main.mainWindow = new BrowserWindow({
       frame: false,
       webPreferences: {
         contextIsolation: false,
@@ -86,10 +85,6 @@ export default class Main {
       spawn(`${runFlask} ${port}`, { detached: false, shell: true, stdio: 'pipe' });
     }
 
-  }
-
-  private static onClose() {
-    Main.mainWindow = null;
   }
 
   private static onActivate() {
@@ -245,8 +240,8 @@ export default class Main {
   private static installExtensions() {
     const isForceDownload = Boolean(process.env.UPGRADE_EXTENSIONS)
 
-    const extensions = ['REACT_DEVELOPER_TOOLS', 'REDUX_DEVTOOLS']
-      .map((extension) => installer(installer[extension], isForceDownload))
+    const extensions = [REACT_DEVELOPER_TOOLS, REDUX_DEVTOOLS]
+      .map((extension) => installer(extension, isForceDownload))
 
     return Promise
       .allSettled(extensions)
@@ -271,9 +266,9 @@ export default class Main {
     }
   }
 
-  static async main(app: Electron.App, browserWindow: typeof BrowserWindow) {
+  static async main(app: Electron.App) {
     Main.port = await Main.createPort()
-    Main.BrowserWindow = browserWindow
+    // Main.BrowserWindow = browserWindow
     Main.application = app
     Main.application.on('window-all-closed', Main.onWindowAllClose)
     Main.application.whenReady().then(Main.onReady)
@@ -281,4 +276,4 @@ export default class Main {
   }
 }
 
-Main.main(app, BrowserWindow)
+Main.main(app)
